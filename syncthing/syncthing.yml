@@ -1,0 +1,30 @@
+- hosts: all
+  tasks:
+    - name: Import Syncthing PGP Keys
+      become: yes
+      ansible.builtin.get_url:
+        dest: /usr/share/keyrings/syncthing-archive-keyring.gpg
+        url: https://syncthing.net/release-key.gpg
+    
+    - name: Add Syncthing stable deb
+      become: yes
+      ansible.builtin.template:
+        src: templates/syncthing.list.j2
+        dest: /etc/apt/sources.list.d/syncthing.list
+
+    - name: Install syncthing
+      become: yes
+      ansible.builtin.apt:
+        update_cache: yes
+        name: syncthing
+        state: latest
+
+    - name: enable systemd unit for syncthing
+      become: yes
+      ansible.builtin.systemd:
+        daemon_reload: yes
+        enabled: yes
+        state: started
+        name: 'syncthing@{{ item }}'
+      loop:
+        - brett
