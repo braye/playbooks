@@ -1,0 +1,43 @@
+- hosts: all
+  become: yes
+  tasks:
+
+    - name: Install nginx, hugo, git
+      ansible.builtin.apt:
+        update_cache: yes
+        name: '{{item}}'
+        state: latest
+      with_items:
+        - hugo
+        - nginx
+
+    - name: enable systemd unit for nginx
+      ansible.builtin.systemd:
+        daemon_reload: yes
+        enabled: yes
+        state: started
+        name: nginx
+
+    - name: template nginx config
+      ansible.builtin.template:
+        src: snepi.space.j2
+        dest: /etc/nginx/sites-available/snepi.space
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: create symlink to sites-enabled
+      ansible.builtin.file:
+        state: link
+        src: /etc/nginx/sites-available/snepi.space
+        dest: /etc/nginx/sites-enabled/snepi.space
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: reload nginx
+      ansible.builtin.systemd:
+        state: reloaded
+        name: nginx
+
+
