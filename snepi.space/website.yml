@@ -10,6 +10,7 @@
       with_items:
         - hugo
         - nginx
+        - git
 
     - name: enable systemd unit for nginx
       ansible.builtin.systemd:
@@ -34,6 +35,47 @@
         owner: root
         group: root
         mode: 0644
+
+    - name: create www-data group
+      ansible.builtin.group:
+        name: www-data
+        state: present
+
+    - name: create directory for site in /var/www
+      ansible.builtin.file:
+        state: directory
+        path: /var/www/snepi.space
+        mode: 0775
+        group: www-data
+        owner: root
+
+    - name: clone website repo
+      ansible.builtin.git:
+        clone: yes
+        dest: /tmp/snepi.space
+        depth: 1
+        repo: http://git.cloth.lan/nepi/snepi.space.git
+        
+    - name: build static site
+      ansible.builtin.command:
+        chdir: /tmp/snepi.space
+        cmd: hugo -b http://snepi.space/
+    
+    - name: remove old site
+      ansible.builtin.file:
+        path: /var/www/snepi.space/
+        state: absent
+
+    - name: copy built site
+      ansible.builtin.copy:
+        remote_src: yes
+        src: /tmp/snepi.space/public/
+        dest: /var/www/snepi.space/
+
+    - name: remove temp files
+      ansible.builtin.file:
+        path: /tmp/snepi.space
+        state: absent
 
     - name: reload nginx
       ansible.builtin.systemd:
