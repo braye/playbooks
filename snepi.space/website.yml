@@ -55,12 +55,12 @@
         dest: /tmp/snepi.space
         depth: 1
         repo: http://git.cloth.lan/nepi/snepi.space.git
-        
+
     - name: build static site
       ansible.builtin.command:
         chdir: /tmp/snepi.space
         cmd: hugo -b http://snepi.space/
-    
+
     - name: remove old site
       ansible.builtin.file:
         path: /var/www/snepi.space/
@@ -75,6 +75,24 @@
     - name: remove temp files
       ansible.builtin.file:
         path: /tmp/snepi.space
+        state: absent
+
+    - name: clone computercraft scripts
+      ansible.builtin.git:
+        clone: yes
+        dest: /tmp/computercraft
+        depth: 1
+        repo: http://git.cloth.lan/nepi/computercraft.git
+
+    - name: move computercraft scripts
+      ansible.builtin.copy:
+        remote_src: yes
+        src: /tmp/computercraft
+        dest: /var/www/snepi.space/
+
+    - name: clean up computercraft
+      ansible.builtin.file:
+        path: /tmp/computercraft
         state: absent
 
     - name: reload nginx
