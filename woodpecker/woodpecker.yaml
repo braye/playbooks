@@ -1,0 +1,107 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install Nginx and Docker
+      ansible.builtin.apt:
+        update_cache: yes
+        name: '{{item}}'
+        state: latest
+      with_items:
+        - docker.io
+        - nginx
+
+    - name: Start and Enable Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install Woodpecker CI Server
+      ansible.builtin.apt:
+        # hardcoding version, and i hope nobody compromises their github account!
+        deb: https://github.com/woodpecker-ci/woodpecker/releases/download/v0.15.3/woodpecker-server_0.15.3_amd64.deb
+        state: present
+
+    - name: Install Woodpecker CI CLI
+      ansible.builtin.apt:
+        deb: https://github.com/woodpecker-ci/woodpecker/releases/download/v0.15.3/woodpecker-cli_0.15.3_amd64.deb
+        state: present
+
+    - name: Install Woodpecker CI Agent
+      ansible.builtin.apt:
+        deb: https://github.com/woodpecker-ci/woodpecker/releases/download/v0.15.3/woodpecker-agent_0.15.3_amd64.deb
+        state: present
+
+    - name: Create Woodpecker User
+      ansible.builtin.user:
+        state: present
+        name: woodpecker
+        groups: docker
+        system: yes
+        shell: /usr/sbin/nologin
+
+    - name: Create Woodpecker etc Directory
+      ansible.builtin.file:
+        state: directory
+        dest: /etc/woodpecker
+        owner: woodpecker
+        group: woodpecker
+        mode: 0755
+
+    - name: Install Woodpecker Env File
+      ansible.builtin.template:
+        src: templates/woodpecker.env.j2
+        dest: /etc/woodpecker/woodpecker.env
+        owner: woodpecker
+        group: woodpecker
+        mode: 0600
+
+    - name: Install Woodpecker Server Unit File
+      ansible.builtin.template:
+        src: templates/woodpecker-server.service.j2
+        dest: /etc/systemd/system/woodpecker-server.service
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Install Woodpecker Agent Unit File
+      ansible.builtin.template:
+        src: templates/woodpecker-agent.service.j2
+        dest: /etc/systemd/system/woodpecker-agent.service
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Start and Enable Woodpecker Server Unit
+      ansible.builtin.systemd:
+        daemon_reload: yes
+        name: woodpecker-server
+        enabled: yes
+        state: started
+
+    - name: Start and Enable Woodpecker Agent Unit
+      ansible.builtin.systemd:
+        # reload not needed, doing it anyway
+        daemon_reload: yes
+        name: woodpecker-agent
+        enabled: yes
+        state: started
+
+    - name: Add Nginx Site
+      ansible.builtin.template:
+        src: templates/ci.cloth.lan.j2
+        dest: /etc/nginx/sites-available/ci.cloth.lan
+
+    - name: Symlink Nginx Site
+      ansible.builtin.file:
+        state: link
+        src: /etc/nginx/sites-available/ci.cloth.lan
+        dest: /etc/nginx/sites-enabled/ci.cloth.lan
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Reload Nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded

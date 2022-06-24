@@ -1,0 +1,10 @@
+[Unit]
+Description=Woodpecker CI Agent
+
+[Service]
+WorkingDirectory={{woodpecker.working_directory}}
+ExecStart=/usr/bin/bash -c woodpecker-agent
+EnvironmentFile=/etc/woodpecker/woodpecker.env
+
+[Install]
+WantedBy=multi-user.target
